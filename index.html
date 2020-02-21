@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Precision, recall and ROC explained</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+</head>
+<body>
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Precision and Recall</h5>
+        <p class="card-text">All these terms seem to be confusing and this simple page should help to sort it out</p>
+    </div>
+</div>
+    <script>
+        const canvas = document.createElement("canvas");
+        b = canvas.getContext("2d");
+        canvas.width = 400;
+        canvas.height = 600;
+        const fieldHeight = 400;
+        const fieldWidth = 400;
+        const seriesWidth = canvas.width / 2;
+        canvas.style = "padding: 0; margin: auto;display: block;";
+        document.body.appendChild(canvas);
+        let selectionCenterX = seriesWidth;
+        let selectionCenterY = fieldHeight / 2 + 20;
+        let selectionR = seriesWidth * 0.75;
+        const middleX = (fieldWidth - 30) / 2;
+        const points = [];
+        let tp, tn, fp, fn, precision, recall, f1, accuracy;
+        generatePoints();
+
+        function reDraw(x, y, r){
+            b.fillStyle = "darkseagreen";
+            b.fillRect(0, 40, seriesWidth, fieldHeight);
+            b.fillStyle = "lightgray";
+            b.fillRect(seriesWidth, 40, fieldWidth, fieldHeight);
+            b.beginPath();
+            b.strokeStyle = "lightsteelblue";
+            b.arc(x, y, r, 0, Math.PI*2);
+            b.closePath();
+            b.stroke();
+            let interceptA = Math.acos((seriesWidth-x)/r);
+            b.beginPath();
+            b.fillStyle = "springgreen";
+            b.arc(x, y, r, interceptA, -interceptA);
+            b.closePath();
+            b.fill();
+            b.beginPath();
+            b.fillStyle = "lightcoral";
+            b.arc(x, y, r, -interceptA, interceptA);
+            b.closePath();
+            b.fill();
+            b.fillStyle = "white";
+            b.fillRect(0, 0, fieldWidth, 40);
+            b.strokeStyle = "dimgray";
+            b.beginPath();
+            b.moveTo(0, 38);
+            b.lineTo(0, 30);
+            b.lineTo(seriesWidth, 30);
+            b.lineTo(seriesWidth, 38);
+            b.fillStyle = "black";
+            b.stroke();
+            b.font = "16px roboto";
+            b.fillText("relevant elements", 26, 24);
+            b.font = "14px roboto";
+            tp = 0;
+            tn = 0;
+            fp = 0;
+            fn = 0;
+            points.forEach((point) => {
+                let px = point[0];
+                let py = point[1];
+                let distance = Math.sqrt(Math.pow(px - x, 2) + Math.pow(py - y, 2));
+                if (px < seriesWidth) {
+                    if (distance > r) {
+                        fn++;
+                        b.strokeStyle = "OrangeRed";
+                    } else {
+                        tp++;
+                        b.strokeStyle = "DarkGreen";
+                    }
+                } else {
+                    if (distance > r) {
+                        tn++;
+                        b.strokeStyle = "dimgray";
+                    } else {
+                        fp++;
+                        b.strokeStyle = "DarkRed";
+                    }
+                }
+                b.beginPath();
+                b.arc(px, py, 3, 0, 2*Math.PI);
+                b.closePath();
+                b.stroke();
+            });
+            b.fillText("false negatives: " + fn, 54, 54);
+            b.fillText("true negatives: " + tn, seriesWidth + 54, 54);
+            b.fillText("true positive: " + tp, 96, y);
+            b.fillText("false positives: " + fp, seriesWidth+16, y);
+            precision =  tp / (tp + fp);
+            recall = tp / (tp + fn);
+            accuracy = (tp + tn) / (tp + fp + fn + tn);
+            f1 = 2 * precision * recall / (precision + recall);
+            b.fillText("precision=" + Math.round(precision * 100) / 100 +
+                ', \trecall=' + Math.round(recall * 100) / 100  +
+                ', \t\t\t\tf1=' + Math.round(f1 * 100) / 100 +
+                ', \taccuracy=' + Math.round(accuracy * 100) / 100,
+                16, fieldHeight+24);
+            document.getElementById('tp').innerText = tp;
+            document.getElementById('tn').innerText = tn;
+            document.getElementById('fp').innerText = fp;
+            document.getElementById('fn').innerText = fn;
+        }
+
+        function generatePoints(){
+            let rootX;
+            points.length = 0;
+            for (let pointNum=0; pointNum<40; pointNum++) {
+                do {
+                    rootX = Math.random() * (fieldWidth - 40)
+                } while ((rootX > (middleX - 10)) && (rootX < (middleX + 10)));
+                const pointX = Math.floor(rootX) + 20;
+                const pointY = Math.floor(Math.random() * (fieldHeight - 100)) + 80;
+                points.push([pointX, pointY]);
+            }
+            reDraw(selectionCenterX, selectionCenterY, selectionR);
+        }
+
+        function buttonUp(){
+            selectionCenterY -= 5;
+            reDraw(selectionCenterX, selectionCenterY, selectionR);
+        }
+
+        function buttonDown(){
+            selectionCenterY += 5;
+            reDraw(selectionCenterX, selectionCenterY, selectionR);
+        }
+
+        function buttonLeft(){
+            selectionCenterX -= 5;
+            reDraw(selectionCenterX, selectionCenterY, selectionR);
+        }
+
+        function buttonRight(){
+            selectionCenterX += 5;
+            reDraw(selectionCenterX, selectionCenterY, selectionR);
+        }
+
+        function buttonZoonOut(){
+            selectionR -= 5;
+            reDraw(selectionCenterX, selectionCenterY, selectionR);
+        }
+
+        function buttonZoonIn(){
+            selectionR += 5;
+            reDraw(selectionCenterX, selectionCenterY, selectionR);
+        }
+    </script>
+
+<table style = "margin-left:auto; margin-right:auto;">
+    <tr>
+        <td>
+        </td>
+        <td>
+            <button type="button" class="btn btn-primary btn-sm" onclick="buttonUp()">Up</button>
+        </td>
+        <td>
+        </td>
+        <td>
+        </td>
+        <td>
+        </td>
+        <td>
+            <button type="button" class="btn btn-primary btn-sm" onclick="buttonZoonIn()">Zoom-in</button>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <button type="button" class="btn btn-primary btn-sm" onclick="buttonLeft()">Left</button>
+        </td>
+        <td>
+        </td>
+        <td>
+            <button type="button" class="btn btn-primary btn-sm" onclick="buttonRight()">Right</button>
+        </td>
+        <td>
+        </td>
+        <td>
+            <button type="button" class="btn btn-danger btn-sm" onclick="generatePoints()">New batch</button>
+        </td>
+        <td>
+        </td>
+    </tr>
+    <tr>
+        <td>
+        </td>
+        <td>
+            <button type="button" class="btn btn-primary btn-sm" onclick="buttonDown()">Down</button>
+        </td>
+        <td>
+        </td>
+        <td>
+        </td>
+        <td>
+        </td>
+        <td>
+            <button type="button" class="btn btn-primary btn-sm" onclick="buttonZoonOut()">Zoom-out</button>
+        </td>
+    </tr>
+</table>
+<br/>
+<table style = "margin-left:auto; margin-right:auto;">
+    <tr>
+        <th>Confusion matrix</th>
+        <th style = "background-color: lightsteelblue">
+            Class 1.
+            Predicted
+        </th>
+        <th style = "background-color: lightsteelblue">
+            Class 2.
+            Predicted
+        </th>
+    </tr>
+    <tr>
+        <td style = "background-color: darkseagreen"><b>Class 1. Actual</b></td>
+        <td id = "tp" style = "background-color: springgreen"></td>
+        <td id = "fp" style = "background-color: lightcoral"></td>
+    </tr>
+    <tr>
+        <td style = "background-color: lightgray"><b>Class 2. Actual</b></td>
+        <td id = "fn" style = "background-color: darkseagreen"></td>
+        <td id = "tn" style = "background-color: lightgray"></td>
+    </tr>
+</table>
+<br/>
+
+
+
+
+    <table style = "margin-left:auto; margin-right:auto;">
+        <tr>
+            <th>Precision</th>
+            <th>Recall</th>
+        </tr>
+        <tr>
+            <td>How many selected<br/>
+                items are relevant<br/>
+                <img src="precision.png"/>
+            </td>
+            <td>How many relevant<br/>
+                items are selected<br/>
+                <img src="recall.png"/>
+            </td>
+        </tr>
+    </table>
+
+    <p>&copy; 2020 Velikii Dmitrii
+</body>
+</html>
